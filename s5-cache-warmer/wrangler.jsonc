@@ -1,0 +1,77 @@
+/**
+ * S-5 Cache Warmer Configuration
+ * For more details on Wrangler configuration:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+ {
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "s5-cache-warmer",
+	"main": "src/index.js",
+	"compatibility_date": "2025-10-31",
+	
+	/**
+	 * Observability for monitoring and debugging
+	 */
+	"observability": {
+		"enabled": true
+	},
+	
+	/**
+	 * Cron Triggers
+	 * Runs every 6 hours to warm cache across different regions
+	 */
+	"triggers": {
+		"crons": [
+			"0 */6 * * *"
+		]
+	},
+	
+	/**
+	 * KV Namespace for tracking progress and storing results
+	 */
+	"kv_namespaces": [
+		{
+			"binding": "CACHE_WARMER_KV",
+			"id": "a19e1ec02e0640c182b3c38bc14b84eb",
+			"remote": true
+		}
+	],
+	
+	/**
+	 * Durable Objects for regional cache warming
+	 * Each DO instance is placed in a specific region for better routing
+	 */
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "CACHE_WARMER_DO",
+				"class_name": "CacheWarmerDO"
+			}
+		]
+	},
+	
+	/**
+	 * Durable Objects Migrations
+	 * Required to enable Durable Objects for the first time
+	 * Note: Keep "v1" tag to match existing production deployment
+	 * Changing the tag would cause "class already exists" errors
+	 */
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_classes": [
+				"CacheWarmerDO"
+			]
+		}
+	],
+	
+	/**
+	 * Environment Variables
+	 * RATE_LIMIT_MS: Milliseconds to wait between requests (prevents overwhelming origin)
+	 * MAX_URLS_PER_RUN: Number of URLs to process per execution (keeps within Worker limits)
+	 */
+	"vars": {
+		"RATE_LIMIT_MS": "2000",      // 2 seconds between requests
+		"MAX_URLS_PER_RUN": "250"     // 250 URLs per run
+	}
+}
